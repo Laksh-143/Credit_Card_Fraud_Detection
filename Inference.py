@@ -19,7 +19,6 @@ class FraudPredictor:
         self.xgb_model = xgb_model
         self.lgbm_model = lgbm_model
         self.threshold = threshold
-        self._explainer = shap.TreeExplainer(xgb_model)
         
     @classmethod
     def load(cls,model_dir:str=None) ->"FraudPredictor":
@@ -36,6 +35,19 @@ class FraudPredictor:
         if prob < 0.75:  return "High"
         return "Critical"
 
+    def _explain_prediction(self, X):
+        """Feature-importance-based explanation (replaces SHAP to avoid GPU crash)."""
+        importances = self.xgb_model.feature_importances_
+
+        reasons = []
+        for i, col in enumerate(X.columns):
+            if i < len(importances) and importances[i] > 0:
+                scaled_val = float(X.iloc[0, i])
+                score = round(float(importances[i] * scaled_val), 4)
+                reasons.append({"feature": col, "shap_value": score})
+
+        reasons.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
+        return reasons[:5]
     
     def predict_single(self, transaction: dict) -> dict:
         """
@@ -82,18 +94,7 @@ class FraudPredictor:
         prob     = float(ensemble_predict(self.xgb_model, self.lgbm_model, X)[0])
         is_fraud = prob >= self.threshold
 
-        try:
-            shap_vals = self._explainer.shap_values(X)
-            if isinstance(shap_vals, list):
-                shap_vals = shap_vals[1]
-            sv = shap_vals[0]
-            top_idx = np.argsort(np.abs(sv))[::-1][:5]
-            top_reasons = [
-                {"feature": X.columns[i], "shap_value": round(float(sv[i]), 4)}
-                for i in top_idx
-            ]
-        except Exception:
-            top_reasons = [] 
+        top_reasons = self._explain_prediction(X)
 
         return {
             "fraud_probability": round(prob, 4),
