@@ -46,7 +46,7 @@ with st.sidebar:
     st.markdown("XGBoost + LightGBM Ensemble")
     st.divider()
 
-    model_status = "✅ Model loaded" if predictor else "❌ Model not found"
+    model_status = " Model loaded" if predictor else " Model not found"
     st.markdown(f"**Status:** {model_status}")
 
     if predictor:
@@ -57,7 +57,7 @@ with st.sidebar:
     st.caption("Temporal split — no data leakage")
 
 # ── Tabs ─────────────────────────────────────────────────────
-tab1, tab2 = st.tabs(["📊 Model Performance", "🎯 Live Prediction"])
+tab1, tab2 = st.tabs([" Model Performance", " Live Prediction"])
 
 
 # ════════════════════════════════════════════════════════════
@@ -191,24 +191,28 @@ with tab2:
     # ── Sample transactions ───────────────────────────────────
     with st.sidebar:
         st.divider()
-        st.subheader("🧪 Test Scenarios")
-        if st.button("🟢 Normal Transaction", use_container_width=True):
-            st.session_state["test_amt"]       = 45.50
-            st.session_state["test_cat"]       = "grocery_pos"
-            st.session_state["test_hour"]      = "14"
-            st.session_state["test_distance"]  = 2.3
+        st.subheader(" Test Scenarios")
+        if st.button(" Normal Transaction", use_container_width=True):
+            st.session_state["test_amt"]    = 45.50
+            st.session_state["test_cat"]    = "grocery_pos"
+            # Normal card: some prior activity, established merchant
+            st.session_state["txn_1h"]      = 0
+            st.session_state["amt_1h"]      = 0.0
+            st.session_state["txn_6h"]      = 1
+            st.session_state["amt_6h"]      = 32.0
+            st.session_state["txn_24h"]     = 3
+            st.session_state["amt_24h"]     = 124.0
 
-        if st.button("🔴 Suspicious Transaction", use_container_width=True):
-            st.session_state["test_amt"]       = 987.00
-            st.session_state["test_cat"]       = "shopping_net"
-            st.session_state["test_hour"]      = "02"
-            st.session_state["test_distance"]  = 850.0
-
-        if st.button("🟡 Mixed Signals", use_container_width=True):
-            st.session_state["test_amt"]       = 210.00
-            st.session_state["test_cat"]       = "misc_net"
-            st.session_state["test_hour"]      = "22"
-            st.session_state["test_distance"]  = 45.0
+        if st.button(" Suspicious Transaction", use_container_width=True):
+            st.session_state["test_amt"]    = 987.00
+            st.session_state["test_cat"]    = "shopping_net"
+            # Suspicious: 5 transactions in the last hour, all at new merchants
+            st.session_state["txn_1h"]      = 5
+            st.session_state["amt_1h"]      = 2340.0
+            st.session_state["txn_6h"]      = 8
+            st.session_state["amt_6h"]      = 3100.0
+            st.session_state["txn_24h"]     = 10
+            st.session_state["amt_24h"]     = 4200.0
 
     # ── Input form ────────────────────────────────────────────
     col1, col2 = st.columns(2)
@@ -257,7 +261,7 @@ with tab2:
         amt_24h = st.number_input("Spend in past 24h ($)",    min_value=0.0, max_value=50000.0, value=245.0)
 
     # ── Score ─────────────────────────────────────────────────
-    if st.button("🧠 Score Transaction", type="primary", use_container_width=True):
+    if st.button(" Score Transaction", type="primary", use_container_width=True):
         from datetime import datetime
 
         transaction = {
@@ -276,10 +280,14 @@ with tab2:
             "long":      -97.7431,
             "merch_lat": 30.2672,
             "merch_long":-97.7431,
-            # Velocity features
-            "txn_count_1h":  txn_1h,  "amt_sum_1h":  amt_1h,
-            "txn_count_6h":  txn_6h,  "amt_sum_6h":  amt_6h,
-            "txn_count_24h": txn_24h, "amt_sum_24h": amt_24h,
+            # Velocity — from user inputs
+            "txn_count_1h":  txn_1h,   "amt_sum_1h":  amt_1h,
+            "txn_count_6h":  txn_6h,   "amt_sum_6h":  amt_6h,
+            "txn_count_24h": txn_24h,  "amt_sum_24h": amt_24h,
+            # Behavioural — default to established card (not new)
+            # Change to 1 in the suspicious scenario
+            "is_new_merchant": 1 if txn_1h == 0 and amt > 500 else 0,
+            "is_new_state":    0,
         }
 
         with st.spinner("Scoring transaction ..."):
@@ -295,7 +303,7 @@ with tab2:
                 with col_res1:
                     st.metric("Fraud Probability", f"{prob*100:.2f}%")
                 with col_res2:
-                    st.metric("Verdict", "🚨 FRAUD" if is_fraud else "✅ LEGITIMATE")
+                    st.metric("Verdict", " FRAUD" if is_fraud else " LEGITIMATE")
                 with col_res3:
                     st.metric("Risk Level", risk)
 
@@ -304,9 +312,9 @@ with tab2:
                 st.progress(prob, text=f"Fraud probability: {prob*100:.1f}%")
 
                 if is_fraud:
-                    st.error(f"⚠️ Transaction flagged as fraud (threshold: {predictor.threshold:.3f})")
+                    st.error(f"Transaction flagged as fraud (threshold: {predictor.threshold:.3f})")
                 else:
-                    st.success(f"✅ Transaction approved (threshold: {predictor.threshold:.3f})")
+                    st.success(f"Transaction approved (threshold: {predictor.threshold:.3f})")
 
                 # ── SHAP reasons ──────────────────────────────
                 st.subheader("Why did the model score this?")
@@ -322,7 +330,7 @@ with tab2:
                     reasons_df = reasons_df.sort_values("abs_impact", ascending=False)
 
                     for _, row in reasons_df.iterrows():
-                        color_badge = "🔴" if row["shap_value"] > 0 else "🟢"
+                        color_badge = "" if row["shap_value"] > 0 else "🟢"
                         st.markdown(
                             f"{color_badge} **{row['feature']}** — "
                             f"{row['direction']} (SHAP: `{row['shap_value']:+.4f}`)"
@@ -341,10 +349,10 @@ with tab2:
 **Threshold** — The cutoff point optimised using business cost (FN × $250 + FP × $15). Transactions above this are flagged.
 
 **Risk Level**
-- 🟢 Low (< 30%): Approve automatically
-- 🟡 Medium (30–50%): Monitor
-- 🟠 High (50–75%): Flag for review
-- 🔴 Critical (> 75%): Block and alert
+-  Low (< 30%): Approve automatically
+-  Medium (30–50%): Monitor
+-  High (50–75%): Flag for review
+-  Critical (> 75%): Block and alert
 
 **SHAP values** — Explain WHY the model scored this transaction. A positive SHAP value means that feature pushed the score toward fraud. A negative value means it pushed toward legitimate.
 
