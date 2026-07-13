@@ -202,19 +202,16 @@ class FraudFeatureEngineer:
     # ─────────────────────────────────────────────────────────
 
     def _build_features(self, df: pd.DataFrame, fit: bool) -> pd.DataFrame:
-        """
-        Calls all feature creation methods in order.
-        fit=True  → learning phase (training data)
-        fit=False → apply phase (val/test data)
-        """
         df = df.copy()
-        df = df.sort_values(Config.TIMESTAMP).reset_index(drop=True)
 
+        # Parse timestamp if it came in as a string (happens during inference)
+        df[Config.TIMESTAMP] = pd.to_datetime(df[Config.TIMESTAMP])
+
+        df = df.sort_values(Config.TIMESTAMP).reset_index(drop=True)
         df = self._base_features(df, fit)
         df = self._temporal_features(df)
         df = self._velocity_features(df)
         df = self._behavioural_features(df)
-
         return df
 
     # ── Base features ─────────────────────────────────────────
