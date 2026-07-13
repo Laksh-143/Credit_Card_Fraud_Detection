@@ -39,6 +39,7 @@ class FraudPredictor:
     
     def predict_single(self, transaction:dict) ->dict:
         df = pd.DataFrame([transaction])
+        df[Config.TIMESTAMP] = pd.to_datetime(df[Config.TIMESTAMP])
         
         for w in Config.VELOCITY_WINDOWS_H:
             for col in [f"txn_count_{w}h",f"amt_sum_{w}h"]:
