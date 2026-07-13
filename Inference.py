@@ -61,9 +61,11 @@ class FraudPredictor:
 
         df     = pd.DataFrame([transaction])
         df_feat = self.fe.transform(df)
-        X      = df_feat[
-            [c for c in self.fe.feature_cols if c in df_feat.columns]
-        ].copy()
+        df_feat = self.fe.transform(df)
+
+        # Ensure exact column match — same names, same order as training
+        # Missing columns get 0 (safe default)
+        X = df_feat.reindex(columns=self.fe.feature_cols, fill_value=0)
 
         # Apply scaler to override values then inject them
         if overrides and hasattr(self.fe.scaler, "feature_names_in_"):
