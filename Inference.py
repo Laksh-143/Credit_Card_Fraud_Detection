@@ -82,17 +82,18 @@ class FraudPredictor:
         prob     = float(ensemble_predict(self.xgb_model, self.lgbm_model, X)[0])
         is_fraud = prob >= self.threshold
 
-        # SHAP explanation
-        shap_vals = self._explainer.shap_values(X)
-        if isinstance(shap_vals, list):
-            shap_vals = shap_vals[1]
-        sv = shap_vals[0]
-
-        top_idx     = np.argsort(np.abs(sv))[::-1][:5]
-        top_reasons = [
-            {"feature": X.columns[i], "shap_value": round(float(sv[i]), 4)}
-            for i in top_idx
-        ]
+        try:
+            shap_vals = self._explainer.shap_values(X)
+            if isinstance(shap_vals, list):
+                shap_vals = shap_vals[1]
+            sv = shap_vals[0]
+            top_idx = np.argsort(np.abs(sv))[::-1][:5]
+            top_reasons = [
+                {"feature": X.columns[i], "shap_value": round(float(sv[i]), 4)}
+                for i in top_idx
+            ]
+        except Exception:
+            top_reasons = [] 
 
         return {
             "fraud_probability": round(prob, 4),
