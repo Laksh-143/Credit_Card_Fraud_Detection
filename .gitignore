@@ -1,0 +1,24 @@
+# Data files (too large for GitHub)
+data/
+*.csv
+*.parquet
+
+# Virtual environment
+fraud_env/
+
+# Logs
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Reports (generated on run)
+reports/
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
