@@ -37,27 +37,61 @@ class FraudPredictor:
         return "Critical"
 
     
-    def predict_single(self, transaction:dict) ->dict:
-        df = pd.DataFrame([transaction])
-        df[Config.TIMESTAMP] = pd.to_datetime(df[Config.TIMESTAMP])
-        
-        for w in Config.VELOCITY_WINDOWS_H:
-            for col in [f"txn_count_{w}h",f"amt_sum_{w}h"]:
-                if col not in df.columns:
-                    df[col] =0.0
+    def predict_single(self, transaction: dict) -> dict:
+        """
+        Score one transaction.
+        Accepts pre-computed velocity and behavioural features
+        from the caller and overrides the pipeline's computed values.
+        """
+        from config import Config
+
+        # Columns we want to override with user-provided values
+        OVERRIDE_COLS = (
+            [f"txn_count_{w}h" for w in Config.VELOCITY_WINDOWS_H] +
+            [f"amt_sum_{w}h"   for w in Config.VELOCITY_WINDOWS_H] +
+            ["is_new_merchant", "is_new_state"]
+        )
+
+        # Extract override values BEFORE building df
+        overrides = {
+            col: transaction[col]
+            for col in OVERRIDE_COLS
+            if col in transaction
+        }
+
+        df     = pd.DataFrame([transaction])
         df_feat = self.fe.transform(df)
-        X = df_feat.reindex(columns=self.fe.feature_cols, fill_value=0)
-        prob = float(ensemble_predict(self.xgb_model,self.lgbm_model,X)[0])
+        X      = df_feat[
+            [c for c in self.fe.feature_cols if c in df_feat.columns]
+        ].copy()
+
+        # Apply scaler to override values then inject them
+        if overrides and hasattr(self.fe.scaler, "feature_names_in_"):
+            feat_names = list(self.fe.scaler.feature_names_in_)
+            for col, raw_val in overrides.items():
+                if col in X.columns and col in feat_names:
+                    idx = feat_names.index(col)
+                    scaled = (
+                        (raw_val - self.fe.scaler.mean_[idx])
+                        / self.fe.scaler.scale_[idx]
+                    )
+                    X[col] = scaled
+
+        prob     = float(ensemble_predict(self.xgb_model, self.lgbm_model, X)[0])
         is_fraud = prob >= self.threshold
-        
+
+        # SHAP explanation
         shap_vals = self._explainer.shap_values(X)
-        if isinstance(shap_vals,list):
+        if isinstance(shap_vals, list):
             shap_vals = shap_vals[1]
-        shap_vals = shap_vals[0]
-        
-        top_idx = np.argsort(np.abs(shap_vals))[::-1][:5]
-        top_reasons = [{"feature":X.columns[i],"shap_value":round(float(shap_vals[i]),4)} for i in top_idx]
-        
+        sv = shap_vals[0]
+
+        top_idx     = np.argsort(np.abs(sv))[::-1][:5]
+        top_reasons = [
+            {"feature": X.columns[i], "shap_value": round(float(sv[i]), 4)}
+            for i in top_idx
+        ]
+
         return {
             "fraud_probability": round(prob, 4),
             "is_fraud":          bool(is_fraud),
