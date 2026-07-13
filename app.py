@@ -28,7 +28,6 @@ st.set_page_config(
     initial_sidebar_state = "expanded",
 )
 
-# ── Load model once at startup ───────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_predictor():
     """Load saved model artifacts. Cached so it only loads once."""
@@ -70,7 +69,6 @@ with tab1:
     # ── Key metrics ──────────────────────────────────────────
     st.subheader("Key Metrics")
 
-    # Load from evaluation report if it exists
     metrics = {}
     report_path = "reports/evaluation_report.txt"
     if os.path.exists(report_path):
@@ -195,7 +193,6 @@ with tab2:
         if st.button(" Normal Transaction", use_container_width=True):
             st.session_state["test_amt"]    = 45.50
             st.session_state["test_cat"]    = "grocery_pos"
-            # Normal card: some prior activity, established merchant
             st.session_state["txn_1h"]      = 0
             st.session_state["amt_1h"]      = 0.0
             st.session_state["txn_6h"]      = 1
@@ -206,7 +203,6 @@ with tab2:
         if st.button(" Suspicious Transaction", use_container_width=True):
             st.session_state["test_amt"]    = 987.00
             st.session_state["test_cat"]    = "shopping_net"
-            # Suspicious: 5 transactions in the last hour, all at new merchants
             st.session_state["txn_1h"]      = 5
             st.session_state["amt_1h"]      = 2340.0
             st.session_state["txn_6h"]      = 8
@@ -245,7 +241,6 @@ with tab2:
         job        = st.text_input("Customer Job", value="Software Engineer")
         city       = st.text_input("City", value="Austin")
 
-    # Velocity inputs (manual since we don't have card history at inference)
     st.subheader("Card Velocity (past activity)")
     st.caption("In production these would be auto-fetched from a database. Enter manually for demo.")
 
@@ -284,8 +279,6 @@ with tab2:
             "txn_count_1h":  txn_1h,   "amt_sum_1h":  amt_1h,
             "txn_count_6h":  txn_6h,   "amt_sum_6h":  amt_6h,
             "txn_count_24h": txn_24h,  "amt_sum_24h": amt_24h,
-            # Behavioural — default to established card (not new)
-            # Change to 1 in the suspicious scenario
             "is_new_merchant": 1 if txn_1h == 0 and amt > 500 else 0,
             "is_new_state":    0,
         }
