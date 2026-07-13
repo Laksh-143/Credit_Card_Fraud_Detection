@@ -508,7 +508,12 @@ class FraudFeatureEngineer:
         if fit:
             df[num_cols] = self.scaler.fit_transform(df[num_cols].astype(float))
         else:
-            df[num_cols] = self.scaler.transform(df[num_cols].astype(float))
+            scale_cols = list(self.scaler.feature_names_in_)
+            for c in scale_cols:
+                if c not in df.columns:
+                    df[c] = 0.0
+            df[scale_cols] = df[scale_cols].fillna(0).astype(float)
+            df[scale_cols] = self.scaler.transform(df[scale_cols])
 
         return df
 
