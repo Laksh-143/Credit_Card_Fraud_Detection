@@ -46,7 +46,7 @@ class FraudPredictor:
                 if col not in df.columns:
                     df[col] =0.0
         df_feat = self.fe.transform(df)
-        X = df_feat[[c for c in self.fe.feature_cols if c in df_feat.columns]]
+        X = df_feat.reindex(columns=self.fe.feature_cols, fill_value=0)
         prob = float(ensemble_predict(self.xgb_model,self.lgbm_model,X)[0])
         is_fraud = prob >= self.threshold
         
