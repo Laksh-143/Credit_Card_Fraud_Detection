@@ -6,14 +6,14 @@ import shap
 from fastapi import FastAPI,HTTPException
 from pydantic import BaseModel,Field
 from config import Config
-from feature_engineering import FeatureEngineer
+from feature_engineering import FraudFeatureEngineer
 from train import ensemble_predict,load_models
 
-logger = logging.getlogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class FraudPredictor:
-    def __init__(self,fe: FeatureEngineer,xgb_model,lgbm_model,threshold:float):
+    def __init__(self,fe: FraudFeatureEngineer,xgb_model,lgbm_model,threshold:float):
         
         self.fe = fe
         self.xgb_model = xgb_model
@@ -23,10 +23,10 @@ class FraudPredictor:
         
     @classmethod
     def load(cls,model_dir:str=None) ->"FraudPredictor":
-        models_dir = models_dir or Config.MODELS_DIR
-        fe = FeatureEngineer.load(model_dir)
+        model_dir = model_dir or Config.MODELS_DIR
+        fe = FraudFeatureEngineer.load(model_dir)
         xgb_model, lgbm_model , threshold = load_models()
-        logger.info(f"FraudPredictor loaded from {models_dir} | threshold = {threshold:.3f}")
+        logger.info(f"FraudPredictor loaded from {model_dir} | threshold = {threshold:.3f}")
         return cls(fe,xgb_model,lgbm_model,threshold)
     
     @staticmethod
