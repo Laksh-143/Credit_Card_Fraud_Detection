@@ -19,7 +19,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-from PIL import Image
 
 st.set_page_config(
     page_title = "Fraud Detection AI",
@@ -28,6 +27,7 @@ st.set_page_config(
     initial_sidebar_state = "expanded",
 )
 
+# ── Load model once at startup ───────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_predictor():
     """Load saved model artifacts. Cached so it only loads once."""
@@ -35,6 +35,7 @@ def load_predictor():
         from Inference import FraudPredictor
         return FraudPredictor.load("saved_models/")
     except Exception as e:
+        st.error(f"Model load error: {e}")
         return None
 
 predictor = load_predictor()
@@ -45,7 +46,7 @@ with st.sidebar:
     st.markdown("XGBoost + LightGBM Ensemble")
     st.divider()
 
-    model_status = " Model loaded" if predictor else " Model not found"
+    model_status = "Model loaded" if predictor else " Model not found"
     st.markdown(f"**Status:** {model_status}")
 
     if predictor:
@@ -74,7 +75,6 @@ with tab1:
     if os.path.exists(report_path):
         with open(report_path) as f:
             content = f.read()
-        # Parse key numbers from report
         import re
         patterns = {
             "AUC-PR":    r"AUC-PR.*?:\s*([\d.]+)",
@@ -90,18 +90,18 @@ with tab1:
 
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric("AUC-PR", f"{metrics.get('AUC-PR', '—'):.4f}" if 'AUC-PR' in metrics else "—",
+        st.metric("AUC-PR", f"{metrics.get('AUC-PR', 0):.4f}" if 'AUC-PR' in metrics else "—",
                   help="Primary metric. Measures performance on the fraud class directly.")
     with col2:
-        st.metric("AUC-ROC", f"{metrics.get('AUC-ROC', '—'):.4f}" if 'AUC-ROC' in metrics else "—")
+        st.metric("AUC-ROC", f"{metrics.get('AUC-ROC', 0):.4f}" if 'AUC-ROC' in metrics else "—")
     with col3:
-        st.metric("Recall", f"{metrics.get('Recall', '—'):.4f}" if 'Recall' in metrics else "—",
+        st.metric("Recall", f"{metrics.get('Recall', 0):.4f}" if 'Recall' in metrics else "—",
                   help="Fraud catch rate — what % of actual fraud did we catch?")
     with col4:
-        st.metric("Precision", f"{metrics.get('Precision', '—'):.4f}" if 'Precision' in metrics else "—",
+        st.metric("Precision", f"{metrics.get('Precision', 0):.4f}" if 'Precision' in metrics else "—",
                   help="When we flag fraud, how often are we right?")
     with col5:
-        st.metric("F1 Score", f"{metrics.get('F1', '—'):.4f}" if 'F1' in metrics else "—")
+        st.metric("F1 Score", f"{metrics.get('F1', 0):.4f}" if 'F1' in metrics else "—")
 
     st.divider()
 
@@ -112,8 +112,6 @@ with tab1:
     comparison_path = "reports/model_comparison.csv"
     if os.path.exists(comparison_path):
         comp_df = pd.read_csv(comparison_path)
-        # Highlight best row
-        best_idx = comp_df["AUC-PR"].idxmax()
         st.dataframe(
             comp_df.style.highlight_max(subset=["AUC-PR"], color="#d4edda")
                          .format({"AUC-PR": "{:.4f}", "AUC-ROC": "{:.4f}",
@@ -123,7 +121,6 @@ with tab1:
             hide_index=True,
         )
 
-        # Bar chart of AUC-PR
         st.bar_chart(
             comp_df.set_index("Model")["AUC-PR"].sort_values(),
             horizontal=True,
@@ -140,27 +137,27 @@ with tab1:
         st.subheader("Confusion Matrix")
         cm_path = "reports/confusion_matrix.png"
         if os.path.exists(cm_path):
-            st.image(Image.open(cm_path), use_column_width=True)
+            st.image(cm_path, use_container_width=True)
         else:
             st.info("Run main.py to generate plots.")
 
         st.subheader("Score Distribution")
         sd_path = "reports/score_distribution.png"
         if os.path.exists(sd_path):
-            st.image(Image.open(sd_path), use_column_width=True)
+            st.image(sd_path, use_container_width=True)
 
     with col_right:
         st.subheader("Precision-Recall Curve")
         pr_path = "reports/precision_recall_curve.png"
         if os.path.exists(pr_path):
-            st.image(Image.open(pr_path), use_column_width=True)
+            st.image(pr_path, use_container_width=True)
         else:
             st.info("Run main.py to generate plots.")
 
         st.subheader("Threshold Cost Curve")
         tc_path = "reports/threshold_cost_curve.png"
         if os.path.exists(tc_path):
-            st.image(Image.open(tc_path), use_column_width=True)
+            st.image(tc_path, use_container_width=True)
 
     st.divider()
 
@@ -170,7 +167,7 @@ with tab1:
 
     shap_path = "reports/shap_xgboost.png"
     if os.path.exists(shap_path):
-        st.image(Image.open(shap_path), use_column_width=True)
+        st.image(shap_path, use_container_width=True)
     else:
         st.info("Run main.py to generate SHAP plots.")
 
@@ -191,24 +188,24 @@ with tab2:
         st.divider()
         st.subheader(" Test Scenarios")
         if st.button(" Normal Transaction", use_container_width=True):
-            st.session_state["test_amt"]    = 45.50
-            st.session_state["test_cat"]    = "grocery_pos"
-            st.session_state["txn_1h"]      = 0
-            st.session_state["amt_1h"]      = 0.0
-            st.session_state["txn_6h"]      = 1
-            st.session_state["amt_6h"]      = 32.0
-            st.session_state["txn_24h"]     = 3
-            st.session_state["amt_24h"]     = 124.0
+            st.session_state["test_amt"]  = 45.50
+            st.session_state["test_cat"]  = "grocery_pos"
+            st.session_state["txn_1h"]    = 0
+            st.session_state["amt_1h"]    = 0.0
+            st.session_state["txn_6h"]    = 1
+            st.session_state["amt_6h"]    = 32.0
+            st.session_state["txn_24h"]   = 3
+            st.session_state["amt_24h"]   = 124.0
 
         if st.button(" Suspicious Transaction", use_container_width=True):
-            st.session_state["test_amt"]    = 987.00
-            st.session_state["test_cat"]    = "shopping_net"
-            st.session_state["txn_1h"]      = 5
-            st.session_state["amt_1h"]      = 2340.0
-            st.session_state["txn_6h"]      = 8
-            st.session_state["amt_6h"]      = 3100.0
-            st.session_state["txn_24h"]     = 10
-            st.session_state["amt_24h"]     = 4200.0
+            st.session_state["test_amt"]  = 987.00
+            st.session_state["test_cat"]  = "shopping_net"
+            st.session_state["txn_1h"]    = 5
+            st.session_state["amt_1h"]    = 2340.0
+            st.session_state["txn_6h"]    = 8
+            st.session_state["amt_6h"]    = 3100.0
+            st.session_state["txn_24h"]   = 10
+            st.session_state["amt_24h"]   = 4200.0
 
     # ── Input form ────────────────────────────────────────────
     col1, col2 = st.columns(2)
@@ -241,6 +238,7 @@ with tab2:
         job        = st.text_input("Customer Job", value="Software Engineer")
         city       = st.text_input("City", value="Austin")
 
+    # Velocity inputs
     st.subheader("Card Velocity (past activity)")
     st.caption("In production these would be auto-fetched from a database. Enter manually for demo.")
 
@@ -283,55 +281,51 @@ with tab2:
             "is_new_state":    0,
         }
 
-        with st.spinner("Scoring transaction ..."):
-            try:
-                result = predictor.predict_single(transaction)
+        try:
+            result = predictor.predict_single(transaction)
 
-                # ── Result display ────────────────────────────
-                prob      = result["fraud_probability"]
-                is_fraud  = result["is_fraud"]
-                risk      = result["risk_level"]
+            # ── Result display ────────────────────────────
+            prob      = result["fraud_probability"]
+            is_fraud  = result["is_fraud"]
+            risk      = result["risk_level"]
 
-                col_res1, col_res2, col_res3 = st.columns(3)
-                with col_res1:
-                    st.metric("Fraud Probability", f"{prob*100:.2f}%")
-                with col_res2:
-                    st.metric("Verdict", " FRAUD" if is_fraud else " LEGITIMATE")
-                with col_res3:
-                    st.metric("Risk Level", risk)
+            st.divider()
 
-                # Probability gauge
-                color = "red" if prob > 0.7 else "orange" if prob > 0.4 else "green"
-                st.progress(prob, text=f"Fraud probability: {prob*100:.1f}%")
+            col_res1, col_res2, col_res3 = st.columns(3)
+            with col_res1:
+                st.metric("Fraud Probability", f"{prob*100:.2f}%")
+            with col_res2:
+                st.metric("Verdict", " FRAUD" if is_fraud else " LEGITIMATE")
+            with col_res3:
+                st.metric("Risk Level", risk)
 
-                if is_fraud:
-                    st.error(f"Transaction flagged as fraud (threshold: {predictor.threshold:.3f})")
-                else:
-                    st.success(f"Transaction approved (threshold: {predictor.threshold:.3f})")
+            # Visual fraud gauge (text-based, no JS component)
+            filled  = int(prob * 20)
+            empty   = 20 - filled
+            bar_color = "" if prob > 0.7 else "" if prob > 0.4 else ""
+            st.markdown(f"**Fraud Score:** {bar_color} `{'█' * filled}{'░' * empty}` **{prob*100:.1f}%**")
 
-                # ── SHAP reasons ──────────────────────────────
+            if is_fraud:
+                st.error(f" Transaction flagged as fraud (threshold: {predictor.threshold:.3f})")
+            else:
+                st.success(f" Transaction approved (threshold: {predictor.threshold:.3f})")
+
+            # ── Feature reasons ──────────────────────────────
+            reasons = result.get("top_reasons", [])
+            if reasons:
                 st.subheader("Why did the model score this?")
-                st.caption("Top features driving this specific prediction (SHAP values)")
+                st.caption("Top features driving this specific prediction (importance × value)")
 
-                reasons = result.get("top_reasons", [])
-                if reasons:
-                    reasons_df = pd.DataFrame(reasons)
-                    reasons_df["direction"] = reasons_df["shap_value"].apply(
-                        lambda x: "↑ Increases fraud risk" if x > 0 else "↓ Reduces fraud risk"
-                    )
-                    reasons_df["abs_impact"] = reasons_df["shap_value"].abs()
-                    reasons_df = reasons_df.sort_values("abs_impact", ascending=False)
+                for reason in reasons:
+                    feat  = reason["feature"]
+                    val   = reason["shap_value"]
+                    badge = "" if val > 0 else ""
+                    direction = "↑ Increases fraud risk" if val > 0 else "↓ Reduces fraud risk"
+                    st.markdown(f"{badge} **{feat}** — {direction} (impact: `{val:+.4f}`)")
 
-                    for _, row in reasons_df.iterrows():
-                        color_badge = "" if row["shap_value"] > 0 else "🟢"
-                        st.markdown(
-                            f"{color_badge} **{row['feature']}** — "
-                            f"{row['direction']} (SHAP: `{row['shap_value']:+.4f}`)"
-                        )
-
-            except Exception as e:
-                st.error(f"Prediction error: {e}")
-                st.caption("Make sure saved_models/ contains all model artifacts.")
+        except Exception as e:
+            st.error(f"Prediction error: {e}")
+            st.caption("Make sure saved_models/ contains all model artifacts.")
 
     # ── Educational footer ────────────────────────────────────
     st.divider()
@@ -342,12 +336,12 @@ with tab2:
 **Threshold** — The cutoff point optimised using business cost (FN × $250 + FP × $15). Transactions above this are flagged.
 
 **Risk Level**
--  Low (< 30%): Approve automatically
--  Medium (30–50%): Monitor
--  High (50–75%): Flag for review
--  Critical (> 75%): Block and alert
+- 🟢 Low (< 30%): Approve automatically
+- 🟡 Medium (30–50%): Monitor
+- 🟠 High (50–75%): Flag for review
+- 🔴 Critical (> 75%): Block and alert
 
-**SHAP values** — Explain WHY the model scored this transaction. A positive SHAP value means that feature pushed the score toward fraud. A negative value means it pushed toward legitimate.
+**Feature Impact** — Explains WHY the model scored this transaction. A positive value means that feature pushed the score toward fraud. A negative value means it pushed toward legitimate.
 
 **Velocity features** — The number and total value of transactions on this card in the past 1h/6h/24h. High velocity is the strongest fraud signal.
         """)

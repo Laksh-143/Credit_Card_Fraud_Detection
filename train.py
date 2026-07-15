@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 import lightgbm as lgb
-import shap
+
 import joblib,os,logging
 import matplotlib
 matplotlib.use("Agg")
@@ -125,7 +125,7 @@ def optimize_threshold(y_true:pd.Series,y_prob:np.ndarray)->dict:
     return {"threshold": best_thr, "min_cost": best_cost}
     
 def compute_shap(model,X:pd.DataFrame,model_name:str = "xgb",max_samples:int = 2000)->None:
-        
+    import shap
     logger.info(f"Computing SHAP values for {model_name}")
     sample = X.sample(min(max_samples,len(X)),random_state=42)
         
@@ -160,5 +160,17 @@ def load_models() -> tuple:
     xgb_model = joblib.load(os.path.join(Config.MODELS_DIR, "xgboost.pkl"))
     lgbm_model = joblib.load(os.path.join(Config.MODELS_DIR, "lightgbm.pkl"))
     meta       = joblib.load(os.path.join(Config.MODELS_DIR, "threshold.pkl"))
+
+    # Force CPU inference — GPU was used for training but causes
+    # random crashes during Streamlit's event loop
+    try:
+        xgb_model.set_params(device="cpu")
+    except Exception:
+        pass
+    try:
+        lgbm_model.set_params(device="cpu")
+    except Exception:
+        pass
+
     return xgb_model, lgbm_model, meta["threshold"]
         
