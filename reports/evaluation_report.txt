@@ -1,0 +1,32 @@
+
+============================================================
+FRAUD DETECTION PIPELINE — EVALUATION REPORT
+============================================================
+ 
+── MODEL PERFORMANCE ──────────────────────────────────────
+  AUC-PR    (primary): 0.9740
+  AUC-ROC            : 0.9992
+  KS Statistic       : 0.9802
+  F1 Score           : 0.9162
+  Precision          : 0.8822
+  Recall             : 0.9529
+  Threshold used     : 0.434
+ 
+── CONFUSION MATRIX ────────────────────────────────────────
+  True Positives (fraud caught)   :    2,044
+  False Negatives (fraud missed)  :      101
+  False Positives (legit blocked) :      273
+  True Negatives (legit passed)   :  553,301
+ 
+── BUSINESS IMPACT ─────────────────────────────────────────
+  Fraud caught ($)           : $  147,932.85
+  Fraud missed ($)           : $    7,839.78
+  False positive cost ($)    : $    4,095.00
+  Net savings ($)            : $  143,837.85
+  Fraud catch rate           : 95.3%
+ 
+── CROSS-VALIDATION (TimeSeriesSplit) ──────────────────────
+  XGBoost  AUC-PR: 0.9579 ± 0.0000
+  LightGBM AUC-PR: 0.9587 ± 0.0000
+ 
+============================================================

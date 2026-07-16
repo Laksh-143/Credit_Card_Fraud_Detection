@@ -14,8 +14,8 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Reports (generated on run)
-reports/
+# Reports (uncommented so they deploy to Streamlit Cloud)
+# reports/
 
 # VS Code
 .vscode/
